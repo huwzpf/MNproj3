@@ -1,3 +1,4 @@
+import copy
 import random
 from math import floor
 
@@ -23,6 +24,34 @@ def lagrange(x, y):
         fun += y[point] * (numerator / denominator)
     return fun
 
+def splines(x, y, k):
+    A = np.zeros((4*k, 4*k))
+    r = np.zeros((4*k, 1))
+    for i in range(k):
+        xn = x[i]
+        xnn = x[i+1]
+        A[(4*i), (4*i):(4*(i+1))] = np.array([xn**3, xn**2, xn, 1])
+        r[(4*i)] = y[i]
+        A[(4*i)+1, (4*i):(4*(i+1))] = np.array([xnn**3, xnn**2, xnn, 1])
+        r[(4 * i)+1] = y[i + 1]
+        if i != k - 1:
+            A[(4*i) + 2, (4*i):(4*(i+2))] = np.array([3 * xnn**2, 2*xnn, 1, 0, -3 * xnn**2, -2*xnn, 1, 0])
+            A[(4*i) + 3, (4*i):(4*(i+2))] = np.array([6 * xnn, 2, 0, 0, 6 * xnn, 2, 0, 0])
+        else:
+            A[(4*i) + 2, :2] = np.array([6 * x[0], 2])
+            A[(4*i) + 3, (4*i):(4*i + 2)] = np.array([6 * xn, 2])
+        r[(4*i)+2] = 0
+        r[(4*i)+3] = 0
+    vals = solve(A, r)
+    for i in range(k):
+        xp = np.linspace(x[i], x[i+1], num=10)
+        coeff = vals[(4*i):4*(i+1)]
+        plt.plot(xp, np.polyval(coeff, xp))
+    plt.scatter(x, y)
+    plt.show()
+    print("done?")
+
+
 
 def interpolate(x, y, k, interval="equal"):
     if interval == "random":
@@ -40,14 +69,55 @@ def interpolate(x, y, k, interval="equal"):
 
         x_sampled = x[::w]
         y_sampled = y[::w]
-    plot_poly(lagrange(x_sampled, y_sampled), x_sampled, y_sampled)
+    #plot_poly(lagrange(x_sampled, y_sampled), x_sampled, y_sampled)
+    splines(x_sampled, y_sampled, x_sampled.shape[0] - 1)
+
+def solve(A, B):
+    n = A.shape[0]
+    y = np.zeros((n, 1))
+    ret = np.zeros((n, 1))
+
+    L, U, P = LU_piv(A, B)
+    b = P.dot(B)
+
+    for i in range(n):
+        s = 0
+        for k in range(i):
+            s += L[i, k] * y[k, 0]
+        y[i] = b[i] - s
+
+    for i in range(n-1, -1, -1):
+        s = 0
+        for k in range(i+1, n):
+            s += U[i, k] * ret[k]
+        ret[i] = (y[i] - s) / U[i, i]
+
+    return ret
+
+def LU_piv(A, b):
+    n = A.shape[0]
+    U = copy.copy(A)
+    L = np.eye(n)
+    P = np.eye(n)
 
 
+    for k in range(n-1):
+        piv_idx = np.argmax(abs(U[k:, k])) + k
+        L[[k, piv_idx], :] = L[[piv_idx, k], :]
+        U[[k, piv_idx], :] = U[[piv_idx, k], :]
+        P[[k, piv_idx], :] = P[[piv_idx, k], :]
+        for j in range(k+1, n):
+            L[j, k] = U[j, k] / U[k, k]
+            for i in range(k, n):
+                U[j, i] = U[j, i] - (L[j, k] * U[k, i])
+
+    return L, U, P
 
 
 def main():
     df = read_csv("100.csv")
     x, y = df.iloc[:, 0].to_numpy(), df.iloc[:, 1].to_numpy()
-    interpolate(x, y, 15, "equal")
+    interpolate(x, y, 51, "equal")
+
 if __name__ == "__main__":
     main()
