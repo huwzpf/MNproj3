@@ -7,13 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_poly(coeff, x, y):
-    xp = np.linspace(x[0], x[-1], num=1000)
-    plt.plot(xp, np.polyval(coeff, xp))
-    plt.scatter(x, y)
-    plt.ylim([-500, max(y)+500])
-    plt.show()
-
 
 def lagrange(x, y):
     fun = np.zeros(x.shape[0])
@@ -22,9 +15,15 @@ def lagrange(x, y):
         numerator = np.poly(xs)
         denominator = np.prod(x[point] - xs)
         fun += y[point] * (numerator / denominator)
-    return fun
 
-def splines(x, y, k):
+    xp = np.linspace(x[0], x[-1], num=1000)
+    plt.plot(xp, np.polyval(fun, xp))
+    plt.scatter(x, y)
+    plt.ylim([-50, max(y) + 50])
+    plt.show()
+
+def splines(x, y):
+    k = x.shape[0] - 1
     A = np.zeros((4*k, 4*k))
     r = np.zeros((4*k, 1))
     for i in range(k):
@@ -35,21 +34,22 @@ def splines(x, y, k):
         A[(4*i)+1, (4*i):(4*(i+1))] = np.array([xnn**3, xnn**2, xnn, 1])
         r[(4 * i)+1] = y[i + 1]
         if i != k - 1:
-            A[(4*i) + 2, (4*i):(4*(i+2))] = np.array([3 * xnn**2, 2*xnn, 1, 0, -3 * xnn**2, -2*xnn, 1, 0])
-            A[(4*i) + 3, (4*i):(4*(i+2))] = np.array([6 * xnn, 2, 0, 0, 6 * xnn, 2, 0, 0])
+            A[(4*i) + 2, (4*i):(4*(i+2))] = np.array([3 * xnn**2, 2*xnn, 1, 0, -3 * xnn**2, -2*xnn, -1, 0])
+            A[(4*i) + 3, (4*i):(4*(i+2))] = np.array([6 * xnn, 2, 0, 0, -6 * xnn, -2, 0, 0])
         else:
             A[(4*i) + 2, :2] = np.array([6 * x[0], 2])
-            A[(4*i) + 3, (4*i):(4*i + 2)] = np.array([6 * xn, 2])
+            A[(4*i) + 3, (4*i):(4*i + 2)] = np.array([6 * x[-1], 2])
         r[(4*i)+2] = 0
         r[(4*i)+3] = 0
     vals = solve(A, r)
+
     for i in range(k):
         xp = np.linspace(x[i], x[i+1], num=10)
         coeff = vals[(4*i):4*(i+1)]
         plt.plot(xp, np.polyval(coeff, xp))
     plt.scatter(x, y)
+    plt.ylim([-50, max(y) + 50])
     plt.show()
-    print("done?")
 
 
 
@@ -69,15 +69,15 @@ def interpolate(x, y, k, interval="equal"):
 
         x_sampled = x[::w]
         y_sampled = y[::w]
-    #plot_poly(lagrange(x_sampled, y_sampled), x_sampled, y_sampled)
-    splines(x_sampled, y_sampled, x_sampled.shape[0] - 1)
+    lagrange(x_sampled, y_sampled)
+    splines(x_sampled, y_sampled)
 
 def solve(A, B):
     n = A.shape[0]
     y = np.zeros((n, 1))
     ret = np.zeros((n, 1))
 
-    L, U, P = LU_piv(A, B)
+    L, U, P = LU_piv(A)
     b = P.dot(B)
 
     for i in range(n):
@@ -94,7 +94,7 @@ def solve(A, B):
 
     return ret
 
-def LU_piv(A, b):
+def LU_piv(A):
     n = A.shape[0]
     U = copy.copy(A)
     L = np.eye(n)
@@ -117,7 +117,7 @@ def LU_piv(A, b):
 def main():
     df = read_csv("100.csv")
     x, y = df.iloc[:, 0].to_numpy(), df.iloc[:, 1].to_numpy()
-    interpolate(x, y, 51, "equal")
+    interpolate(x, y, 15, "equal")
 
 if __name__ == "__main__":
     main()
