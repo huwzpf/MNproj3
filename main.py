@@ -1,7 +1,5 @@
 import copy
 import random
-from math import floor
-
 from pandas import read_csv
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,6 +18,9 @@ def lagrange(x, y):
     plt.plot(xp, np.polyval(fun, xp))
     plt.scatter(x, y)
     plt.ylim([-50, max(y) + 50])
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+    plt.title(f"Interpolacja Lagrange dla {x.shape[0] - 1} przedziałów")
     plt.show()
 
 def splines(x, y):
@@ -41,14 +42,17 @@ def splines(x, y):
             A[(4*i) + 3, (4*i):(4*i + 2)] = np.array([6 * x[-1], 2])
         r[(4*i)+2] = 0
         r[(4*i)+3] = 0
-    vals = solve(A, r)
+    coeffs = solve(A, r)
 
     for i in range(k):
         xp = np.linspace(x[i], x[i+1], num=10)
-        coeff = vals[(4*i):4*(i+1)]
+        coeff = coeffs[(4*i):4*(i+1)]
         plt.plot(xp, np.polyval(coeff, xp))
     plt.scatter(x, y)
     plt.ylim([-50, max(y) + 50])
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+    plt.title(f"Interpolacja Spline dla {k} przedziałów")
     plt.show()
 
 
@@ -77,7 +81,20 @@ def solve(A, B):
     y = np.zeros((n, 1))
     ret = np.zeros((n, 1))
 
-    L, U, P = LU_piv(A)
+    U = copy.copy(A)
+    L = np.eye(n)
+    P = np.eye(n)
+
+    for k in range(n - 1):
+        piv_idx = np.argmax(abs(U[k:, k])) + k
+        L[[k, piv_idx], :] = L[[piv_idx, k], :]
+        U[[k, piv_idx], :] = U[[piv_idx, k], :]
+        P[[k, piv_idx], :] = P[[piv_idx, k], :]
+        for j in range(k + 1, n):
+            L[j, k] = U[j, k] / U[k, k]
+            for i in range(k, n):
+                U[j, i] = U[j, i] - (L[j, k] * U[k, i])
+
     b = P.dot(B)
 
     for i in range(n):
@@ -93,25 +110,6 @@ def solve(A, B):
         ret[i] = (y[i] - s) / U[i, i]
 
     return ret
-
-def LU_piv(A):
-    n = A.shape[0]
-    U = copy.copy(A)
-    L = np.eye(n)
-    P = np.eye(n)
-
-
-    for k in range(n-1):
-        piv_idx = np.argmax(abs(U[k:, k])) + k
-        L[[k, piv_idx], :] = L[[piv_idx, k], :]
-        U[[k, piv_idx], :] = U[[piv_idx, k], :]
-        P[[k, piv_idx], :] = P[[piv_idx, k], :]
-        for j in range(k+1, n):
-            L[j, k] = U[j, k] / U[k, k]
-            for i in range(k, n):
-                U[j, i] = U[j, i] - (L[j, k] * U[k, i])
-
-    return L, U, P
 
 
 def main():
