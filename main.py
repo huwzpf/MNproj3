@@ -4,6 +4,7 @@ from pandas import read_csv
 import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
+import time
 
 
 def plot_lagrange(x, y, fun, color=None):
@@ -20,27 +21,35 @@ def plot_splines(x, y, k, coeffs, color=None):
     plt.scatter(x, y, c='#000000', marker='x', s=100, label="Points for interpolation")
 
 
-def lagrange(x, y, plot=False):
+def lagrange(x, y, plot=False, ex_time=False):
+    if ex_time:
+        start = time.time()
     fun = np.zeros(x.shape[0])
     for point in range(x.shape[0]):
         xs = np.append(x[:point], x[point+1:])
         numerator = np.poly(xs)
         denominator = np.prod(x[point] - xs)
         fun += y[point] * (numerator / denominator)
-
+    if ex_time:
+        end = time.time()
+        print(f"lagrange k = {x.shape[0] - 1}, time = {end - start} s")
     if plot:
         plot_lagrange(x, y, fun)
         plt.ylim([min(y) - 50, max(y) + 50])
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
         plt.title(f"Interpolacja Lagrange dla {x.shape[0] - 1} przedziałów")
-
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys())
         plt.show()
 
     return fun
 
 
-def splines(x, y, plot=False):
+def splines(x, y, plot=False, ex_time=False):
+    if ex_time:
+        start = time.time()
     k = x.shape[0] - 1
     A = np.zeros((4*k, 4*k))
     r = np.zeros((4*k, 1))
@@ -60,19 +69,24 @@ def splines(x, y, plot=False):
         r[(4*i)+2] = 0
         r[(4*i)+3] = 0
     coeffs = solve(A, r)
-
+    if ex_time:
+        end = time.time()
+        print(f"splines k = {k}, time = {end - start} s")
     if plot:
         plot_splines(x, y, k, coeffs)
         plt.ylim([min(y) - 50, max(y) + 50])
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
         plt.title(f"Interpolacja Spline dla {k} przedziałów")
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys())
         plt.show()
 
     return coeffs
 
 
-def interpolate(x, y, k, interval="equal", method="both", plotting="none", add_txt=""):
+def interpolate(x, y, k, interval="equal", method="both", plotting="none", add_txt="", ex_time=False):
 
     if method != 'lagrange' and method != 'spline':
         method = "both"
@@ -102,9 +116,12 @@ def interpolate(x, y, k, interval="equal", method="both", plotting="none", add_t
         plot = False
 
     if method == "lagrange" or method == "both":
-        cl = lagrange(x_sampled, y_sampled, plot)
+        plt.scatter(x, y, c='#ff0000', label="all datapoints")
+        cl = lagrange(x_sampled, y_sampled, plot, ex_time=ex_time)
+
     if method == "spline" or method == "both":
-        cs = splines(x_sampled, y_sampled, plot)
+        plt.scatter(x, y, c='#ff0000', label="all datapoints")
+        cs = splines(x_sampled, y_sampled, plot, ex_time=ex_time)
 
     if plotting == "one" or plotting == "both":
         plt.scatter(x, y, c='#ff0000', label="all datapoints")
@@ -167,16 +184,20 @@ def load_data(path):
 
 
 def main():
+    """
     x, y = load_data("WielkiKanionKolorado.csv")
     interpolate(x, y, 5, interval="equal", method="both", plotting="one", add_txt="WielkiKanionKolorado")
+    interpolate(x, y, 20, interval="equal", method="both", plotting="one", add_txt="WielkiKanionKolorado")
     x, y = load_data("Obiadek.csv")
     interpolate(x, y, 5, interval="equal", method="both", plotting="one", add_txt="Obiadek")
+    interpolate(x, y, 20, interval="equal", method="both", plotting="one", add_txt="Obiadek")
     x, y = load_data("MountEverest.csv")
     interpolate(x, y, 5, interval="equal", method="both", plotting="one", add_txt="MountEverest")
+    interpolate(x, y, 20, interval="equal", method="both", plotting="one", add_txt="MountEverest")
+    """
     x, y = load_data("100.csv")
-    interpolate(x, y, 5, interval="equal", method="both", plotting="one", add_txt="")
-    interpolate(x, y, 20, interval="equal", method="both", plotting="individual", add_txt="")
-    interpolate(x, y, 20, interval="random", method="both", plotting="both", add_txt="")
+    interpolate(x, y, 8, interval="equal", method="both", plotting="one", add_txt="", ex_time=True)
+
 
 
 if __name__ == "__main__":
